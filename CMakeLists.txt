@@ -128,6 +128,27 @@ FetchContent_Declare(asmjit
 )
 FetchContent_MakeAvailable(asmjit)
 
+# Ensure obse64 uses static runtime to match our project
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
+message(STATUS "Fetching obse64 (f36de11432ea35a5bd036dc06327e820dee08678)...")
+FetchContent_Declare(obse64
+	GIT_REPOSITORY
+		"https://github.com/ianpatt/obse64.git"
+	GIT_TAG
+		f36de11432ea35a5bd036dc06327e820dee08678
+)
+FetchContent_MakeAvailable(obse64)
+
+# Override the runtime library setting to match the main project
+set_target_properties(
+    obse64
+    obse64_common
+    obse64_loader
+    PROPERTIES
+        MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
+)
+
 set(TRACY_STATIC ON CACHE BOOL "" FORCE)
 set(TRACY_ENABLE OFF CACHE BOOL "" FORCE)
 
@@ -860,6 +881,7 @@ target_link_libraries(uevr PUBLIC
 target_link_libraries(uevr PUBLIC
 	kananlib
 	uesdk
+	obse64
 )
 
 set_target_properties(uevr PROPERTIES

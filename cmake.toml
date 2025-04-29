@@ -81,6 +81,24 @@ tag = "bc889afb4c5bf1c0d8ee29ef35eaaf4c8bef8a5d"
 git = "https://github.com/asmjit/asmjit.git"
 tag = "2a706fd2ba355808cada31ac1eed8ce28caa6b37"
 
+[fetch-content.obse64]
+git = "https://github.com/ianpatt/obse64.git"
+tag = "f36de11432ea35a5bd036dc06327e820dee08678"
+cmake-before="""
+# Ensure obse64 uses static runtime to match our project
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+"""
+cmake-after="""
+# Override the runtime library setting to match the main project
+set_target_properties(
+    obse64
+    obse64_common
+    obse64_loader
+    PROPERTIES
+        MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
+)
+"""
+
 [fetch-content.tracy]
 git = "https://github.com/wolfpld/tracy"
 tag = "897aec5b062664d2485f4f9a213715d2e527e0ca"
@@ -271,7 +289,8 @@ ARCHIVE_OUTPUT_DIRECTORY_RELWITHDEBINFO = "${CMAKE_BINARY_DIR}/lib/${CMKR_TARGET
 type="ue4template"
 link-libraries = [
     "kananlib",
-    "uesdk"
+    "uesdk",
+    "obse64"
 ]
 cmake-after="""
 add_custom_command(
