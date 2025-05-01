@@ -1,6 +1,7 @@
 // dllmain
 #include <windows.h>
 #include <cstdint>
+#include <ShlObj.h>
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/basic_file_sink.h>
 
@@ -9,6 +10,7 @@
 #include "Framework.hpp"
 #include "obse64_common/obse64_version.h"
 #include "obse64_common/BranchTrampoline.h"
+#include "obse64_common/Log.h"
 #include "obse64/PluginAPI.h"
 
 PluginHandle g_pluginHandle;
@@ -16,6 +18,19 @@ OBSEMessagingInterface* g_messaging = nullptr;
 
 void startup_thread(HMODULE poc_module) {
     g_framework = std::make_unique<Framework>(poc_module);
+	_MESSAGE("UEVR: framework initialized");
+}
+
+void OnOBSEMessage(OBSEMessagingInterface::Message* msg) {
+    if (msg->type == OBSEMessagingInterface::kMessage_PostLoad) {
+        _MESSAGE("UEVR: PostLoad");
+    } else if (msg->type == OBSEMessagingInterface::kMessage_PostPostLoad) {
+        _MESSAGE("UEVR: PostPostLoad");
+    } else {
+        _MESSAGE("UEVR: Unknown message type %u", msg->type);
+    }
+
+    DebugLog::flush();
 }
 
 extern "C" {
@@ -35,14 +50,24 @@ extern "C" {
 		0, 0, 0	// set these reserved fields to 0
 	};
 
-	 bool OBSEPlugin_Load(const OBSEInterface* obse) {
-		g_pluginHandle = obse->GetPluginHandle();
+	 __declspec(dllexport) bool OBSEPlugin_Preload(const OBSEInterface* obse) {
+		DebugLog::openRelative(CSIDL_MYDOCUMENTS, "\\My Games\\" SAVE_FOLDER_NAME "\\OBSE\\Logs\\obse64-uevr.txt");
+		_MESSAGE("UEVR: preload");
+		return true;
+	 }
 
-		if (g_pluginHandle == kPluginHandle_Invalid) {
-			return false;
-		}
+	 __declspec(dllexport) bool OBSEPlugin_Load(const OBSEInterface* obse) {
+		 _MESSAGE("UEVR: loading plugin");
 
-		g_messaging = (OBSEMessagingInterface*)obse->QueryInterface(kInterface_Messaging);
+		 g_pluginHandle = obse->GetPluginHandle();
+
+		 if (g_pluginHandle == kPluginHandle_Invalid) {
+			 _MESSAGE("UEVR: Invalid plugin handle");
+			 return false;
+		 }
+
+		 g_messaging = (OBSEMessagingInterface*)obse->QueryInterface(kInterface_Messaging);
+		 g_messaging->RegisterListener(g_pluginHandle, "OBSE", OnOBSEMessage);
 
 		if (!g_branchTrampoline.create(1024 * 128)) {
 			return false;
@@ -51,9 +76,12 @@ extern "C" {
 		auto moduleHandle = reinterpret_cast<void*>(GetModuleHandleA("UEVRBackend.dll"));
 
 		if (!g_localTrampoline.create(1024 * 128, moduleHandle)) {
+			_MESSAGE("UEVR: Failed to create local trampoline");
 			return false;
 		}
 
+		_MESSAGE("UEVR: initializing startup thread");
+		DebugLog::flush();
         CreateThread(nullptr, 0, (LPTHREAD_START_ROUTINE)startup_thread, moduleHandle, 0, nullptr);
 		return true;
      }
