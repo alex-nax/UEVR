@@ -668,6 +668,7 @@ target_link_libraries(luavrlib PUBLIC
 	sol2
 	kananlib
 	glm
+	asmjit
 )
 
 unset(CMKR_TARGET)
